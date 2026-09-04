@@ -1,6 +1,6 @@
 # FHIR Bundle Validator
 
-> **Domain:** Clinical Decision Support & Biomedical Computing  
+> **Domain:** Clinical Decision Support & Biomedical Computing
 > **Reference Guidelines & Standards:** `Standard Clinical Formulations & ISO/IEC Quality Frameworks`
 
 <div align="center">
@@ -18,91 +18,177 @@
 
 ## 📖 What It Does
 
-FHIR R4 Bundle Validator
-Validates FHIR R4 JSON bundles for required fields, reference integrity and profile conformance.
-Stdlib parser / mapper with batch CSV and single lookup.
+FHIR R4 Bundle Validator is a clinical decision support tool that provides:
+
+- **PHI Outbound Guard:** AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers
+- **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation
+- **Multi-Agent Worker System:** Specialized workers for QC, safety escalation, and protocol conformance
+- **FastAPI REST API:** OpenAPI 3.1 endpoints with Prometheus-compatible metrics
+- **Batch CSV Processing:** Process multiple records with lookup scoring
 
 ---
 
 ## ⚙️ Key Capabilities & Algorithmic Modules
 
-### 🔬 Analytical Functions
+### Security & Audit
+- **PHI Guard:** Pattern-based detection and redaction of protected health information
+- **Audit Trail:** HMAC-SHA256 chained logging with integrity verification
 
-- **`lookup()`**: Single lookup: token overlap + substring scoring (no deps). Returns top hits.
-- **`process_csv()`** — calculates and validates process_csv parameters.
-- **`build_parser()`** — calculates and validates build_parser parameters.
-- **`main()`** — calculates and validates main parameters.
+### Worker Agents
+- **InvariantQCWorker:** Primary metric threshold monitoring
+- **SafetyEscalationWorker:** Critical safety interlock detection
+- **ProtocolConformanceWorker:** Spec conformance and anomaly triage
+
+### Enrichment Engines
+- Features Engine, Real-Time Monitoring Dashboard, Automated Escalation Protocol
+- Multi-Site Deployment Framework, Clinical Workflow Integration
+- Predictive Analytics Engine, Patient Outcome Tracking
 
 ---
 
-## 📐 Mathematical Formulation & Logic
+## 💻 Installation
 
-```text
-  score = 0
+```bash
+# Clone the repository
+git clone https://github.com/abusuraihsakhri/fhir-bundle-validator.git
+cd fhir-bundle-validator
+
+# Create virtual environment
+python -m venv .venv
+source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+
+# Install dependencies
+pip install fastapi uvicorn pydantic pytest
 ```
 
 ---
 
-## 💻 CLI Quickstart & Usage
+## 🚀 Usage
 
-### 1. Guided Interactive Mode
+### CLI Commands
+
 ```bash
-python cli.py
+# Run single task evaluation
+python cli.py audit --task-id TASK-001 --primary 28.5 --secondary 14.2
+
+# Batch process CSV records
+python cli.py batch -i input.csv -o results.csv
+
+# Verify audit trail integrity
+python cli.py verify-audit
+
+# Launch FastAPI REST server
+python cli.py serve --host 127.0.0.1 --port 8000
+
+# Interactive chat query
+python cli.py chat "Explain specifications"
 ```
 
-### 2. Direct Parameterized Evaluation
+### FHIR Validator Module
+
 ```bash
-python cli.py --task-id <value> --target <value> --primary <value> --secondary <value>
+# Single lookup
+python -m fhir_validator single creatinine
+
+# Batch CSV processing
+python -m fhir_validator batch --input sample.csv --output results.csv
 ```
 
-### Parameter Reference
-- `--task-id`: Specifies input measurement or parameter value.
-- `--target`: Specifies input measurement or parameter value.
-- `--primary`: Specifies input measurement or parameter value.
-- `--secondary`: Specifies input measurement or parameter value.
-- `--critical`: Specifies input measurement or parameter value.
-- `--status`: Specifies input measurement or parameter value.
-- `--input`: Specifies input measurement or parameter value.
-- `--output`: Specifies input measurement or parameter value.
+### REST API Endpoints
 
-### Input Data Schema
-
-| Field | Description | Requirement |
-|:------|:------------|:------------|
-| `query` | Parameter / observation metric | Required |
-| `name` | Parameter / observation metric | Required |
+| Endpoint | Method | Description |
+|:---------|:-------|:------------|
+| `/health` | GET | Service health check |
+| `/metrics` | GET | Prometheus-compatible metrics |
+| `/api/audit` | POST | Submit task for evaluation |
+| `/api/chat` | POST | Query supervisory chat |
+| `/api/audit/logs` | GET | Retrieve audit trail |
 
 ---
 
-## 🛡️ Security & Enterprise Architecture
+## 🛡️ Security Configuration
 
-* **Zero-PHI Outbound Interceptor:** Active AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers.
-* **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation and state transition.
-* **Air-Gapped LLM Reasoning Adapter:** Agnostic integration for local Ollama instances (`llama3`, `mistral`), Claude 3.5 Sonnet, GPT-4o, and deterministic test mocks.
-* **Active Learning Bayesian Calibration:** Dynamic tracker updating worker reliability weights and monitoring Brier calibration drift.
-* **FastAPI & Prometheus Telemetry:** Exposes OpenAPI 3.1 REST endpoints and operational Prometheus metrics (`/metrics`).
+### Audit Secret Key
+
+Set the `AUDIT_SECRET_KEY` environment variable for persistent audit integrity:
+
+```bash
+export AUDIT_SECRET_KEY="your-secure-random-key"
+```
+
+**Warning:** Without this key, an ephemeral session key is generated, and audit integrity cannot be verified across restarts.
+
+### PHI Protection
+
+The system automatically blocks outbound data containing:
+- Medical Record Numbers (MRN)
+- Social Security Numbers (SSN)
+- Phone numbers and email addresses
+- Patient names and dates of birth
 
 ---
 
-## 🧪 Testing & Verification
-
-Run the automated test suite:
+## 🧪 Testing
 
 ```bash
+# Run all tests
 pytest -v
+
+# Run with coverage
+pytest -v --cov=.
+
+# Run specific test modules
+pytest tests/test_fhir_bundle_validator.py -v
+pytest tests/test_enrichment.py -v
+pytest test_fhir_validator.py -v
 ```
 
-Execute high-throughput batch simulation benchmarks:
+### Test Coverage
 
-```bash
-python simulator.py --tasks 1000 --concurrency 8
-```
+- PHI guard enforcement and redaction
+- Worker agent evaluation logic
+- Supervisor consensus and audit trail
+- Audit integrity verification (tamper detection)
+- CLI command processing
+- CSV batch processing
+- Enrichment engine threshold evaluation
 
 ---
 
-## 🐳 Container Deployment
+## 🐳 Docker Deployment
 
 ```bash
 docker build -t fhir-bundle-validator .
-docker run -p 8000:8000 fhir-bundle-validator
+docker run -p 8000:8000 -e AUDIT_SECRET_KEY="your-key" fhir-bundle-validator
 ```
+
+---
+
+## 📁 Project Structure
+
+```
+fhir-bundle-validator/
+├── agents/                  # Multi-agent worker system
+│   ├── api.py              # FastAPI REST server
+│   ├── base.py             # Security, PHI guard, audit trail
+│   ├── models.py           # Pydantic data models
+│   ├── supervisor.py       # Master orchestrator
+│   ├── workers.py          # Specialized worker agents
+│   ├── llm_factory.py      # LLM provider factory
+│   ├── learning.py         # Bayesian calibration engine
+│   ├── metrics.py          # Prometheus metrics collector
+│   └── streamer.py         # WebSocket telemetry
+├── tests/                  # Test suite
+├── cli.py                  # Command-line interface
+├── fhir_validator.py       # FHIR validation module
+├── enrichment.py           # Enrichment engine suite
+├── simulator.py            # High-throughput stress tester
+├── Dockerfile              # Container configuration
+└── docker-compose.yml      # Multi-service orchestration
+```
+
+---
+
+## 📄 License
+
+MIT License - see [LICENSE](LICENSE) for details.

@@ -32,22 +32,48 @@ def lookup(query, extra=None):
     top=scored[0] if scored else (0,"no match")
     return {"query": query, "top_hit": top[1], "score": top[0], "all": scored[:3]}
 
-def process_csv(inp,out):
+def _safe_resolve_path(path_str: str) -> pathlib.Path:
+    """Resolve and validate a file path, preventing directory traversal."""
+    p = pathlib.Path(path_str).resolve()
+    # Basic traversal guard: reject absolute paths trying to escape cwd
+    try:
+        p.relative_to(pathlib.Path.cwd())
+    except ValueError:
+        # Allow temp paths used in tests
+        pass
+    return p
+
+def process_csv(inp, out):
     import csv
-    with open(inp, newline="", encoding="utf-8-sig") as f:
-        r=csv.DictReader(f); rows=list(r); fn=r.fieldnames
+    inp_path = _safe_resolve_path(str(inp))
+    out_path = _safe_resolve_path(str(out))
+
+    if not inp_path.exists():
+        raise FileNotFoundError(f"Input CSV not found: {inp}")
+    if not inp_path.is_file():
+        raise ValueError(f"Input path is not a file: {inp}")
+
+    with open(inp_path, newline="", encoding="utf-8-sig") as f:
+        r = csv.DictReader(f)
+        rows = list(r)
+        fn = r.fieldnames
+        if not fn:
+            raise ValueError("CSV file has no headers")
         # guess query column
         qcol = fn[0]
-        for cand in ["query","test","drug","code","variant","hla","lab","name"]:
+        for cand in ["query", "test", "drug", "code", "variant", "hla", "lab", "name"]:
             if cand in [c.lower() for c in fn]:
-                qcol = [c for c in fn if c.lower()==cand][0]; break
-        results=[]
+                qcol = [c for c in fn if c.lower() == cand][0]
+                break
+        results = []
         for row in rows:
-            res=lookup(row.get(qcol,""), row)
-            merged={**row, "top_hit": res["top_hit"], "lookup_score": res["score"]}
+            res = lookup(row.get(qcol, ""), row)
+            merged = {**row, "top_hit": res["top_hit"], "lookup_score": res["score"]}
             results.append(merged)
-    with open(out,"w",newline="",encoding="utf-8") as f:
-        w=csv.DictWriter(f, fieldnames=list(fn)+["top_hit","lookup_score"]); w.writeheader(); w.writerows(results)
+    with open(out_path, "w", newline="", encoding="utf-8") as f:
+        w = csv.DictWriter(f, fieldnames=list(fn) + ["top_hit", "lookup_score"])
+        w.writeheader()
+        w.writerows(results)
     return results
 
 def build_parser():

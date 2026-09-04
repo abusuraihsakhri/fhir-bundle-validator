@@ -8,7 +8,7 @@ from pathlib import Path
 sys.path.insert(0, str(Path(__file__).parent.parent))
 
 import pytest
-from agents.base import PHIGuard, AuditLogger, SecurityException
+from agents.base import PHIGuard, AuditLogger, AuditTrail, SecurityException
 from agents.models import SystemTaskPayload, UrgencyLevel, SystemIntegrityStatus
 from agents.workers import InvariantQCWorker, SafetyEscalationWorker, ProtocolConformanceWorker
 from agents.supervisor import SystemSupervisor
@@ -63,3 +63,47 @@ def test_supervisor_consensus_and_audit():
     assert main(["audit", "--task-id", "CLI-TEST-01"]) == 0
     assert main(["chat", "Explain", "specifications"]) == 0
     assert main(["verify-audit"]) == 0
+
+
+def test_audit_trail_integrity_tampering():
+    """Verify tampered audit trail fails integrity check."""
+    trail = AuditTrail(secret_key="test-key-for-integrity")
+    trail.log("test", "test_tier", "TEST_EVENT", {"data": "value1"})
+    trail.log("test", "test_tier", "TEST_EVENT", {"data": "value2"})
+    assert trail.verify_integrity() is True
+
+    # Tamper with an entry
+    if trail.logs:
+        trail.logs[0]["payload_hash"] = "tampered_hash"
+    assert trail.verify_integrity() is False
+
+
+def test_audit_trail_requires_secret_key():
+    """Verify AuditTrail uses ephemeral key when no secret provided."""
+    import warnings
+    with warnings.catch_warnings(record=True) as w:
+        warnings.simplefilter("always")
+        trail = AuditTrail(secret_key=None)
+        # Should have issued a warning about ephemeral key
+        assert any("AUDIT_SECRET_KEY" in str(warning.message) for warning in w)
+    assert trail.secret_key != b""
+
+
+def test_phi_guard_redaction():
+    """Verify PHI redaction replaces sensitive data."""
+    text = "Patient John Doe MRN-12345678 has appointment"
+    redacted = PHIGuard.redact_phi(text)
+    assert "12345678" not in redacted
+    assert "REDACTED_IDENTIFIER" in redacted
+
+
+def test_supervisor_phi_blocking():
+    """Verify supervisor rejects PHI in task IDs."""
+    supervisor = SystemSupervisor(model_provider="mock")
+    payload = SystemTaskPayload(
+        task_id="Patient MRN-12345678",
+        target_identifier="KEY-01",
+        primary_metric=10.0,
+    )
+    with pytest.raises(SecurityException):
+        supervisor.process_task(payload)
