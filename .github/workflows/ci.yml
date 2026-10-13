@@ -30,7 +30,7 @@ jobs:
           node-version: "22"
       - run: node --check web/validator.js
       - run: node --check web/app.js
-      - run: node --test tests/test_browser_validator.cjs
+      - run: node --test tests/test_browser_validator.cjs tests/test_browser_app.cjs
   docker-build:
     runs-on: ubuntu-latest
     steps:
