@@ -24,3 +24,14 @@ jobs:
           path: web
       - id: deployment
         uses: actions/deploy-pages@v4
+      - name: Smoke test deployed HTML and assets
+        env:
+          PAGE_URL: ${{ steps.deployment.outputs.page_url }}
+        run: |
+          curl --retry 8 --retry-delay 5 --retry-all-errors --fail --silent --show-error --location "$PAGE_URL" -o /tmp/fhir-index.html
+          grep -q '<title>FHIR R4 Bundle Validator</title>' /tmp/fhir-index.html
+          for asset in app.js validator.js style.css audit.html; do
+            curl --retry 8 --retry-delay 5 --retry-all-errors --fail --silent --show-error --location "${PAGE_URL}${asset}" -o "/tmp/${asset}"
+          done
+          grep -q 'validateBundle' /tmp/validator.js
+          grep -q 'addEventListener' /tmp/app.js
