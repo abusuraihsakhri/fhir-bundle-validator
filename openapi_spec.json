@@ -2,8 +2,8 @@
   "openapi": "3.1.0",
   "info": {
     "title": "Fhir Bundle Validator API",
-    "description": "Enterprise Distributed Component Platform (Clinical & Cryptographic AI) adhering to CAP / CLSI / NIST Standards.",
-    "version": "3.0.0-ENTERPRISE",
+    "description": "FHIR R4 Bundle structural validation and separate legacy threshold-audit API. Not full FHIR profile or terminology conformance.",
+    "version": "3.1.0",
     "contact": {
       "name": "Dr. Abu Suraih Sakhri",
       "url": "https://github.com/abusuraihsakhri"
@@ -25,7 +25,7 @@
         "summary": "Prometheus operational metrics",
         "responses": {
           "200": {
-            "description": "Prometheus text metrics"
+            "description": "JSON counter summary (not Prometheus exposition format)."
           }
         }
       }
@@ -76,7 +76,7 @@
     },
     "/api/chat": {
       "post": {
-        "summary": "Air-gapped supervisory conversational assistant",
+        "summary": "Query local mock supervisory responder",
         "requestBody": {
           "content": {
             "application/json": {
@@ -107,6 +107,35 @@
         "responses": {
           "200": {
             "description": "Cryptographic audit trail"
+          }
+        }
+      }
+    },
+    "/api/validate": {
+      "post": {
+        "summary": "Validate selected FHIR R4 Bundle structural invariants",
+        "description": "Partial structural checks only; returns JSON error and warning report.",
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object",
+                "required": [
+                  "resourceType",
+                  "type"
+                ],
+                "additionalProperties": true
+              }
+            }
+          }
+        },
+        "responses": {
+          "200": {
+            "description": "Validation report; valid may be false when errors are detected."
+          },
+          "422": {
+            "description": "Malformed API request."
           }
         }
       }
