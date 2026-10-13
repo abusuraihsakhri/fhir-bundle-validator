@@ -23,7 +23,7 @@
     }
     if(bundle.resourceType!=="Bundle") err("$.resourceType","RESOURCE_TYPE","resourceType must be Bundle.");
     if(!TYPES.has(bundle.type)) err("$.type","BUNDLE_TYPE","Unknown FHIR R4 Bundle type.");
-    if(bundle.id!==undefined&&!ID.test(bundle.id)) err("$.id","FHIR_ID","Invalid Bundle id; expected 1–64 letters, numbers, hyphens, or periods.");
+    if(bundle.id!==undefined&&(typeof bundle.id!=="string"||!ID.test(bundle.id))) err("$.id","FHIR_ID","Invalid Bundle id; expected 1–64 letters, numbers, hyphens, or periods.");
     if(bundle.entry!==undefined&&!Array.isArray(bundle.entry)) err("$.entry","ENTRY_TYPE","entry must be an array.");
     if(Array.isArray(bundle.entry)) entries=bundle.entry;
     if(bundle.total!==undefined){
@@ -66,7 +66,7 @@
           err(path+".resource.resourceType","RESOURCE_TYPE","resourceType must be a nonempty string.");
         else {
           resourceCount++;
-          if(entry.resource.id!==undefined&&!ID.test(entry.resource.id)) err(path+".resource.id","FHIR_ID","Invalid resource id.");
+          if(entry.resource.id!==undefined&&(typeof entry.resource.id!=="string"||!ID.test(entry.resource.id))) err(path+".resource.id","FHIR_ID","Invalid resource id.");
           if(nonempty(entry.resource.id)) ids.add(entry.resource.resourceType+"/"+entry.resource.id);
         }
       }
