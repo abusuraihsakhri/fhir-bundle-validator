@@ -1,5 +1,7 @@
 # FHIR Bundle Validator
 
+### [Open the Live Application →](https://abusuraihsakhri.github.io/fhir-bundle-validator/)
+
 Validate selected HL7 FHIR R4 Bundle structural rules using a browser, Python CLI, or FastAPI. The existing threshold-based agent audit is retained as a separate legacy workflow.
 
 ## Features and limitations
