@@ -37,6 +37,11 @@ def main(argv=None):
     # Verify Audit
     subparsers.add_parser("verify-audit", help="Verify HMAC audit trail integrity")
 
+    # FHIR Bundle validation (separate from the legacy threshold audit).
+    p_validate = subparsers.add_parser("validate", help="Check FHIR R4 JSON Bundle structure")
+    p_validate.add_argument("-i", "--input", required=True, help="Path to a Bundle JSON file")
+    p_validate.add_argument("-o", "--output", help="Optional JSON validation report")
+
     # Serve
     p_serve = subparsers.add_parser("serve", help="Launch FastAPI REST server")
     p_serve.add_argument("--host", default="127.0.0.1")
@@ -110,6 +115,22 @@ def main(argv=None):
             writer.writerows(out_rows)
         print(f"Processed {len(out_rows)} records -> {args.output}")
         return 0
+
+    if args.command == "validate":
+        from bundle_validation import validate_bundle
+        try:
+            with open(args.input, encoding="utf-8") as handle:
+                data = json.load(handle)
+            report = validate_bundle(data)
+            formatted = json.dumps(report, indent=2)
+            if args.output:
+                with open(args.output, "w", encoding="utf-8") as handle:
+                    handle.write(formatted + "\\n")
+            print(formatted)
+            return 0 if report["valid"] else 1
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"Unable to read Bundle JSON: {exc}", file=sys.stderr)
+            return 2
 
     if args.command == "serve":
         import uvicorn
