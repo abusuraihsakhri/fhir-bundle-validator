@@ -1,194 +1,64 @@
 # FHIR Bundle Validator
 
-> **Domain:** Clinical Decision Support & Biomedical Computing
-> **Reference Guidelines & Standards:** `Standard Clinical Formulations & ISO/IEC Quality Frameworks`
+Validate selected HL7 FHIR R4 Bundle structural rules using a browser, Python CLI, or FastAPI. The existing threshold-based agent audit is retained as a separate legacy workflow.
 
-<div align="center">
+## Features and limitations
 
-[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](LICENSE)
-![Python](https://img.shields.io/badge/Python-3.10%20%7C%203.11%20%7C%203.12-3776AB.svg?logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.111-009688.svg?logo=fastapi&logoColor=white)
-![Audit Trail](https://img.shields.io/badge/Audit-HMAC--SHA256_Tamper--Evident-brightgreen.svg)
-![Zero-PHI Guard](https://img.shields.io/badge/Guard-Zero--PHI_Outbound-blue.svg)
-![Docker](https://img.shields.io/badge/Docker-Ready-2496ED.svg?logo=docker&logoColor=white)
+- JSON Bundle root, type, entry structure, and resource identifier checks.
+- Selected FHIR R4 Bundle invariants bdl-1–bdl-5 and bdl-7–bdl-12, including document/message entry order, transaction and batch requirements, and fullUrl uniqueness.
+- Warnings for unresolved local contained, relative, and URN references; external references can legitimately be outside the Bundle.
+- JSON report with issue severity, JSON path, and rule code.
 
-</div>
+**This is a partial structural checker**, not full FHIR R4 conformance validation. It does not enforce resource schemas, required clinical resource elements, StructureDefinition profiles, implementation guides, terminology bindings, or remote reference resolution. Passing is not clinical or interoperability certification.
 
----
+## Browser app
 
-## 📖 What It Does
+Open the web/index.html file in a modern Chromium, Firefox, or Safari browser, or use GitHub Pages once deployed. Paste Bundle JSON or open a local .json file (maximum 5 MiB), select **Validate Bundle**, and optionally download the report. **Load example** uses synthetic data.
 
-FHIR R4 Bundle Validator is a clinical decision support tool that provides:
+The static application processes input in browser memory, with no uploads, remote libraries, or persistent browser storage. Reports contain issue metadata, not full input JSON. Avoid identifiable patient data on shared devices.
 
-- **PHI Outbound Guard:** AST and regex inspection blocking SSNs, MRNs, phone numbers, and patient identifiers
-- **Tamper-Evident HMAC-SHA256 Audit Trail:** Chained, cryptographically signed logs for every evaluation
-- **Multi-Agent Worker System:** Specialized workers for QC, safety escalation, and protocol conformance
-- **FastAPI REST API:** OpenAPI 3.1 endpoints with Prometheus-compatible metrics
-- **Batch CSV Processing:** Process multiple records with lookup scoring
+The legacy console is web/audit.html; its audit button requires a running same-origin FastAPI server. It no longer fabricates results when the server is absent.
 
----
+## Local use
 
-## ⚙️ Key Capabilities & Algorithmic Modules
+Requires Python 3.10+; CI currently checks 3.10–3.12. Set up a virtual environment and install runtime dependencies:
 
-### Security & Audit
-- **PHI Guard:** Pattern-based detection and redaction of protected health information
-- **Audit Trail:** HMAC-SHA256 chained logging with integrity verification
+    python -m venv .venv
+    source .venv/bin/activate
+    python -m pip install -r requirements.txt
 
-### Worker Agents
-- **InvariantQCWorker:** Primary metric threshold monitoring
-- **SafetyEscalationWorker:** Critical safety interlock detection
-- **ProtocolConformanceWorker:** Spec conformance and anomaly triage
+Run the actual Bundle validator:
 
-### Enrichment Engines
-- Features Engine, Real-Time Monitoring Dashboard, Automated Escalation Protocol
-- Multi-Site Deployment Framework, Clinical Workflow Integration
-- Predictive Analytics Engine, Patient Outcome Tracking
+    python cli.py validate -i bundle.json -o validation-report.json
 
----
+Exit status: 0 for no structural errors, 1 for errors, and 2 for unreadable/invalid input. Run the API and same-origin web app:
 
-## 💻 Installation
+    python cli.py serve --host 127.0.0.1 --port 8000
 
-```bash
-# Clone the repository
-git clone https://github.com/abusuraihsakhri/fhir-bundle-validator.git
-cd fhir-bundle-validator
+Open http://127.0.0.1:8000/ for the UI, http://127.0.0.1:8000/docs for generated API documentation, or POST a JSON Bundle object to /api/validate.
 
-# Create virtual environment
-python -m venv .venv
-source .venv/bin/activate  # On Windows: .venv\Scripts\activate
+Legacy agent commands are audit, batch, chat, and verify-audit; endpoints include /api/audit, /api/chat, /api/audit/logs, /health, and /metrics (JSON counters). The historical python -m fhir_validator single/batch performs dictionary lookup, **not** FHIR validation.
 
-# Install dependencies
-pip install fastapi uvicorn pydantic pytest
-```
+## Docker
 
----
+For a local, non-committed audit secret:
 
-## 🚀 Usage
+    python -c "import secrets; print('AUDIT_SECRET_KEY=' + secrets.token_hex(32))" > .env
+    docker compose up --build
 
-### CLI Commands
+Compose binds only to 127.0.0.1:8000 by default. The legacy HMAC ledger is in memory; restart persistence requires retaining both records and key. Regex-based sensitive identifier detection is not comprehensive PHI de-identification. Do not expose the legacy API publicly without authentication, TLS, and review.
 
-```bash
-# Run single task evaluation
-python cli.py audit --task-id TASK-001 --primary 28.5 --secondary 14.2
+## Tests
 
-# Batch process CSV records
-python cli.py batch -i input.csv -o results.csv
+    python -m pip install -r requirements.txt pytest
+    python -m pytest -q
+    node --test tests/test_browser_validator.cjs
+    node --check web/validator.js
+    node --check web/app.js
+    docker build -t fhir-bundle-validator .
 
-# Verify audit trail integrity
-python cli.py verify-audit
+CI exercises Python 3.10, 3.11, 3.12, Node.js 22 browser logic, and Docker image builds. JavaScript runs natively in the browser; Pyodide is not required.
 
-# Launch FastAPI REST server
-python cli.py serve --host 127.0.0.1 --port 8000
+## Technology and license
 
-# Interactive chat query
-python cli.py chat "Explain specifications"
-```
-
-### FHIR Validator Module
-
-```bash
-# Single lookup
-python -m fhir_validator single creatinine
-
-# Batch CSV processing
-python -m fhir_validator batch --input sample.csv --output results.csv
-```
-
-### REST API Endpoints
-
-| Endpoint | Method | Description |
-|:---------|:-------|:------------|
-| `/health` | GET | Service health check |
-| `/metrics` | GET | Prometheus-compatible metrics |
-| `/api/audit` | POST | Submit task for evaluation |
-| `/api/chat` | POST | Query supervisory chat |
-| `/api/audit/logs` | GET | Retrieve audit trail |
-
----
-
-## 🛡️ Security Configuration
-
-### Audit Secret Key
-
-Set the `AUDIT_SECRET_KEY` environment variable for persistent audit integrity:
-
-```bash
-export AUDIT_SECRET_KEY="your-secure-random-key"
-```
-
-**Warning:** Without this key, an ephemeral session key is generated, and audit integrity cannot be verified across restarts.
-
-### PHI Protection
-
-The system automatically blocks outbound data containing:
-- Medical Record Numbers (MRN)
-- Social Security Numbers (SSN)
-- Phone numbers and email addresses
-- Patient names and dates of birth
-
----
-
-## 🧪 Testing
-
-```bash
-# Run all tests
-pytest -v
-
-# Run with coverage
-pytest -v --cov=.
-
-# Run specific test modules
-pytest tests/test_fhir_bundle_validator.py -v
-pytest tests/test_enrichment.py -v
-pytest test_fhir_validator.py -v
-```
-
-### Test Coverage
-
-- PHI guard enforcement and redaction
-- Worker agent evaluation logic
-- Supervisor consensus and audit trail
-- Audit integrity verification (tamper detection)
-- CLI command processing
-- CSV batch processing
-- Enrichment engine threshold evaluation
-
----
-
-## 🐳 Docker Deployment
-
-```bash
-docker build -t fhir-bundle-validator .
-docker run -p 8000:8000 -e AUDIT_SECRET_KEY="your-key" fhir-bundle-validator
-```
-
----
-
-## 📁 Project Structure
-
-```
-fhir-bundle-validator/
-├── agents/                  # Multi-agent worker system
-│   ├── api.py              # FastAPI REST server
-│   ├── base.py             # Security, PHI guard, audit trail
-│   ├── models.py           # Pydantic data models
-│   ├── supervisor.py       # Master orchestrator
-│   ├── workers.py          # Specialized worker agents
-│   ├── llm_factory.py      # LLM provider factory
-│   ├── learning.py         # Bayesian calibration engine
-│   ├── metrics.py          # Prometheus metrics collector
-│   └── streamer.py         # WebSocket telemetry
-├── tests/                  # Test suite
-├── cli.py                  # Command-line interface
-├── fhir_validator.py       # FHIR validation module
-├── enrichment.py           # Enrichment engine suite
-├── simulator.py            # High-throughput stress tester
-├── Dockerfile              # Container configuration
-└── docker-compose.yml      # Multi-service orchestration
-```
-
----
-
-## 📄 License
-
-MIT License - see [LICENSE](LICENSE) for details.
+Python 3, FastAPI, Pydantic 2, vanilla JavaScript, HTML, and CSS. MIT licensed; see [LICENSE](LICENSE). Bundle invariant definitions: [HL7 FHIR R4 Bundle](https://hl7.org/fhir/R4/bundle.html).

@@ -12,6 +12,18 @@ from agents.base import AuditLogger
 supervisor = SystemSupervisor(model_provider="mock")
 
 
+def parse_csv_bool(value):
+    """Parse explicit CSV truth values without treating 'false' as True."""
+    if isinstance(value, bool):
+        return value
+    raw = str(value or "").strip().lower()
+    if raw in ("", "false", "0", "no", "n", "off"):
+        return False
+    if raw in ("true", "1", "yes", "y", "on"):
+        return True
+    raise ValueError(f"Invalid boolean in is_critical_flag: {raw!r}")
+
+
 def main(argv=None):
     parser = argparse.ArgumentParser(prog="fhir-bundle-validator", description="Fhir Bundle Validator")
     subparsers = parser.add_subparsers(dest="command", required=True)
@@ -36,6 +48,11 @@ def main(argv=None):
 
     # Verify Audit
     subparsers.add_parser("verify-audit", help="Verify HMAC audit trail integrity")
+
+    # FHIR Bundle validation (separate from the legacy threshold audit).
+    p_validate = subparsers.add_parser("validate", help="Check FHIR R4 JSON Bundle structure")
+    p_validate.add_argument("-i", "--input", required=True, help="Path to a Bundle JSON file")
+    p_validate.add_argument("-o", "--output", help="Optional JSON validation report")
 
     # Serve
     p_serve = subparsers.add_parser("serve", help="Launch FastAPI REST server")
@@ -94,7 +111,7 @@ def main(argv=None):
                 primary_metric=float(r.get("primary_metric", 15.0)),
                 secondary_metric=float(r.get("secondary_metric", 5.0)),
                 status_descriptor=r.get("status_descriptor", "NOMINAL"),
-                is_critical_flag=bool(r.get("is_critical_flag", False)),
+                is_critical_flag=parse_csv_bool(r.get("is_critical_flag", False)),
             )
             dossier = supervisor.process_task(payload)
             row_dict = dict(r)
@@ -110,6 +127,22 @@ def main(argv=None):
             writer.writerows(out_rows)
         print(f"Processed {len(out_rows)} records -> {args.output}")
         return 0
+
+    if args.command == "validate":
+        from bundle_validation import validate_bundle
+        try:
+            with open(args.input, encoding="utf-8") as handle:
+                data = json.load(handle)
+            report = validate_bundle(data)
+            formatted = json.dumps(report, indent=2)
+            if args.output:
+                with open(args.output, "w", encoding="utf-8") as handle:
+                    handle.write(formatted + "\n")
+            print(formatted)
+            return 0 if report["valid"] else 1
+        except (OSError, json.JSONDecodeError) as exc:
+            print(f"Unable to read Bundle JSON: {exc}", file=sys.stderr)
+            return 2
 
     if args.command == "serve":
         import uvicorn
