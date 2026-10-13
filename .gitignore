@@ -9,3 +9,7 @@ tmp_*.csv
 *.log
 .DS_Store
 .env
+
+.coverage
+htmlcov/
+*.egg-info/
