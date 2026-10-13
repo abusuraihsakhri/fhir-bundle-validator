@@ -44,8 +44,8 @@ def validate_bundle(bundle):
         return dict(valid=False, resourceCount=0, errorCount=1, warningCount=0, issues=issues)
     if bundle.get("resourceType") != "Bundle":
         err("$.resourceType", "RESOURCE_TYPE", "resourceType must be Bundle.")
-    bundle_type = bundle.get("type")
-    if bundle_type not in TYPES if isinstance(bundle_type, str) else True:
+    bundle_type = bundle.get("type") if isinstance(bundle.get("type"), str) else None
+    if bundle_type not in TYPES:
         err("$.type", "BUNDLE_TYPE", "Unknown FHIR R4 Bundle type.")
     if "id" in bundle and (not isinstance(bundle["id"], str) or not FHIR_ID.fullmatch(bundle["id"])):
         err("$.id", "FHIR_ID", "Invalid Bundle id; expected 1–64 letters, numbers, hyphens, or periods.")
