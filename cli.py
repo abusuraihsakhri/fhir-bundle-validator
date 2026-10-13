@@ -125,7 +125,7 @@ def main(argv=None):
             formatted = json.dumps(report, indent=2)
             if args.output:
                 with open(args.output, "w", encoding="utf-8") as handle:
-                    handle.write(formatted + "\\n")
+                    handle.write(formatted + "\n")
             print(formatted)
             return 0 if report["valid"] else 1
         except (OSError, json.JSONDecodeError) as exc:
